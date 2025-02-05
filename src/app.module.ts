@@ -16,11 +16,11 @@ import { MembershipType } from './membership-types/membership-type.entity';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
-      type: 'postgres', // Remplace par 'mysql' si tu utilises MySQL
+      type: 'mysql', // Remplace par 'mysql' si tu utilises MySQL
       host: 'localhost', 
-      port: 5432, 
-      username: 'postgres', 
-      password: 'your_password', 
+      port: 3306, 
+      username: 'root', 
+      password: '', 
       database: 'gym_db',
       entities: [User, Member, Session, Payment, Registration, MembershipType],
       synchronize: true,  // N'utilise pas en production pour éviter la perte de données
