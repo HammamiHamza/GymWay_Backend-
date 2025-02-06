@@ -6,11 +6,21 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ unique: true })
   username: string;
 
   @Column()
-  passwordHash: string;
+  password: string;
+
+  @Column({ unique: true })
+  email: string;
+
+  @Column({
+    type: 'enum',
+    enum: ['ADMIN', 'STAFF'],
+    default: 'STAFF'
+  })
+  role: string;
 
   @Column()
   firstName: string;
@@ -18,14 +28,8 @@ export class User {
   @Column()
   lastName: string;
 
-  @Column()
-  email: string;
-
-  @Column()
+  @Column({ nullable: true })
   phoneNumber: string;
-
-  @Column()
-  role: 'admin' | 'staff';
 
   @OneToMany(() => Session, session => session.instructor)
   sessions: Session[];

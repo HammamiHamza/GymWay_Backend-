@@ -18,11 +18,11 @@ export class SessionsService {
     return this.sessionsRepository.find();
   }
 
-  /*findOne(id: number): Promise<Session> {
-    return this.sessionsRepository.findOne(id);
-  }*/
+  findOne(id: number): Promise<Session> {
+    return this.sessionsRepository.findOne({ where: { id } });
+  }
 
-  remove(id: number): Promise<void> {
-    return this.sessionsRepository.delete(id).then(() => {});
+  async remove(id: number): Promise<void> {
+    await this.sessionsRepository.delete(id);
   }
 }

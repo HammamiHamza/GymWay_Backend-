@@ -31,4 +31,13 @@ export class Member {
 
   @OneToMany(() => Registration, registration => registration.member)
   registrations: Registration[];
+
+  @Column()
+  password: string;
+
+  @Column({ default: false })
+  isActive: boolean;
+
+  @Column({ nullable: true })
+  lastLoginDate: Date;
 }

@@ -9,5 +9,6 @@ import { Member } from '../members/member.entity';  // Importer l'entité membre
   imports: [TypeOrmModule.forFeature([Session, Member])],
   controllers: [SessionsController],
   providers: [SessionsService],
+  exports: [SessionsService],
 })
 export class SessionsModule {}
