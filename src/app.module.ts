@@ -20,7 +20,7 @@ import { MembershipType } from './membership-types/membership-type.entity';
       host: 'localhost', 
       port: 5432, 
       username: 'postgres', 
-      password: 'your_password', 
+      password: 'postgres', 
       database: 'gym_db',
       entities: [User, Member, Session, Payment, Registration, MembershipType],
       synchronize: true,  // N'utilise pas en production pour éviter la perte de données

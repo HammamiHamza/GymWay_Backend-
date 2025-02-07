@@ -25,4 +25,6 @@ export class SessionsService {
   remove(id: number): Promise<void> {
     return this.sessionsRepository.delete(id).then(() => {});
   }
+  
+  
 }
