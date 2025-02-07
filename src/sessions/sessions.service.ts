@@ -25,4 +25,6 @@ export class SessionsService {
   async remove(id: number): Promise<void> {
     await this.sessionsRepository.delete(id);
   }
+  
+  
 }
