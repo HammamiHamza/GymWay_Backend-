@@ -1,22 +1,21 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { Member } from '../members/member.entity';
 import { Session } from '../sessions/session.entity';
-import { User } from '../users/user.entity';
 
 @Entity()
 export class Registration {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Member, member => member.registrations)
+  @ManyToOne(() => Member)
   member: Member;
 
-  @ManyToOne(() => Session, session => session.registrations)
+  @ManyToOne(() => Session)
   session: Session;
 
-  @Column()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   registrationDate: Date;
 
-  @Column()
+  @Column({ default: 'confirmed' })
   status: 'confirmed' | 'cancelled';
 }

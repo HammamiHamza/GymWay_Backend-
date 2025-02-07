@@ -1,8 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Registration } from './registration.entity';
-import { User } from 'src/users/user.entity';
+import { Member } from '../members/member.entity';
 import { Session } from '../sessions/session.entity';
 
 @Injectable()
@@ -12,52 +12,67 @@ export class RegistrationsService {
     private registrationsRepository: Repository<Registration>,
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-  
+    @InjectRepository(Member)
+    private readonly memberRepository: Repository<Member>,
   ) {}
 
   async registerForSession(userId: number, sessionId: number): Promise<Registration> {
-    // Vérifier si la session existe
-    const session = await this.sessionRepository.findOne({ where: { id: sessionId } });
+    const session = await this.sessionRepository.findOne({ 
+      where: { id: sessionId }
+    });
+    
     if (!session) {
-      throw new BadRequestException("Session introuvable");
+      throw new BadRequestException('Session not found');
     }
 
-    // Vérifier si l'utilisateur existe
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new BadRequestException("Utilisateur introuvable");
+    const member = await this.memberRepository.findOne({
+      where: { id: userId }
+    });
+
+    if (!member) {
+      throw new BadRequestException('Member not found');
     }
 
-    // (Optionnel) Vérifier la capacité de la session et si l'utilisateur est déjà inscrit
+    // Check if member is already registered
+    const existingRegistration = await this.registrationsRepository.findOne({
+      where: {
+        member: { id: userId },
+        session: { id: sessionId },
+        status: 'confirmed'
+      }
+    });
 
-    const registration = this.registrationsRepository.create({ session });
+    if (existingRegistration) {
+      throw new BadRequestException('Already registered for this session');
+    }
+
+    const registration = this.registrationsRepository.create({
+      member,
+      session,
+      status: 'confirmed',
+      registrationDate: new Date()
+    });
+
     return this.registrationsRepository.save(registration);
   }
 
-  // Récupérer les inscriptions d'un utilisateur
   async getRegistrationsForUser(userId: number): Promise<Registration[]> {
     return this.registrationsRepository.find({
-      where: { user: { id: userId } }as any,
-      relations: ['session'], // pour avoir les détails de la session
+      where: { member: { id: userId } },
+      relations: ['session'],
+      order: { registrationDate: 'DESC' }
     });
   }
 
+  async remove(id: number): Promise<void> {
+    const registration = await this.registrationsRepository.findOne({
+      where: { id }
+    });
+    
+    if (!registration) {
+      throw new BadRequestException('Registration not found');
+    }
 
-  create(registration: Partial<Registration>): Promise<Registration> {
-    return this.registrationsRepository.save(registration);
-  }
-
-  findAll(): Promise<Registration[]> {
-    return this.registrationsRepository.find();
-  }
-
-  /*findOne(id: number): Promise<Registration> {
-    return this.registrationsRepository.findOne(id);
-  }*/
-
-  remove(id: number): Promise<void> {
-    return this.registrationsRepository.delete(id).then(() => {});
+    await this.registrationsRepository.update(id, { status: 'cancelled' });
   }
 }

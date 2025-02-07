@@ -2,10 +2,14 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
+import { MembersService } from '../members/members.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private usersService: UsersService) {
+  constructor(
+    private usersService: UsersService,
+    private membersService: MembersService
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -14,14 +18,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    const user = await this.usersService.findOne(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException();
+    if (payload.type === 'member') {
+      const member = await this.membersService.findByEmail(payload.email);
+      if (!member) {
+        throw new UnauthorizedException();
+      }
+      return {
+        id: payload.sub,
+        email: payload.email,
+        type: 'member'
+      };
+    } else {
+      const user = await this.usersService.findOne(payload.sub);
+      if (!user) {
+        throw new UnauthorizedException();
+      }
+      return {
+        id: payload.sub,
+        username: payload.username,
+        role: payload.role,
+        type: 'staff'
+      };
     }
-    return {
-      userId: payload.sub,
-      username: payload.username,
-      role: payload.role
-    };
   }
 } 

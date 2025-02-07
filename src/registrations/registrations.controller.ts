@@ -1,28 +1,26 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { RegistrationsService } from './registrations.service';
 import { Registration } from './registration.entity';
+import { JwtAuthGuard } from 'src/auth/jwt.guard';
 
 @Controller('registrations')
+@UseGuards(JwtAuthGuard)
 export class RegistrationsController {
   constructor(private readonly registrationsService: RegistrationsService) {}
 
   @Post()
-  create(@Body() registration: Registration): Promise<Registration> {
-    return this.registrationsService.create(registration);
+  create(@Request() req, @Body() data: { sessionId: number }): Promise<Registration> {
+    return this.registrationsService.registerForSession(req.user.id, data.sessionId);
   }
 
-  @Get()
-  findAll(): Promise<Registration[]> {
-    return this.registrationsService.findAll();
+  @Get('user')
+  getUserRegistrations(@Request() req): Promise<Registration[]> {
+    return this.registrationsService.getRegistrationsForUser(req.user.id);
   }
-
-  /*@Get(':id')
-  findOne(@Param('id') id: number): Promise<Registration> {
-    return this.registrationsService.findOne(id);
-  }*/
 
   @Delete(':id')
-  remove(@Param('id') id: number): Promise<void> {
+  @UseGuards(JwtAuthGuard)
+  remove(@Request() req, @Param('id') id: number): Promise<void> {
     return this.registrationsService.remove(id);
   }
 }
