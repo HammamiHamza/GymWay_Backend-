@@ -11,5 +11,6 @@ import { SessionsModule } from '../sessions/sessions.module';
   ],
   controllers: [AdminController],
   providers: [AdminService],
+  exports: [AdminService]
 })
 export class AdminModule {} 

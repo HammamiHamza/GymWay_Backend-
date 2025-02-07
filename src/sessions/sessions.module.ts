@@ -12,5 +12,6 @@ import { PaymentsModule } from '../payments/payments.module';
   ],
   controllers: [SessionsController],
   providers: [SessionsService],
+  exports: [SessionsService]
 })
 export class SessionsModule {}

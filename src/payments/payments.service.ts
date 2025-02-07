@@ -1,28 +1,36 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, MoreThan, LessThanOrEqual } from 'typeorm';
 import { Payment } from './payment.entity';
-import { PaypalService } from './services/paypal.service';
+import { Member } from '../members/member.entity';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     @InjectRepository(Payment)
-    private paymentsRepository: Repository<Payment>,
-    private paypalService: PaypalService
+    private paymentsRepository: Repository<Payment>
   ) {}
 
-  create(payment: Partial<Payment>): Promise<Payment> {
-    return this.paymentsRepository.save(payment);
+  async create(payment: Partial<Payment>): Promise<Payment> {
+    const newPayment = this.paymentsRepository.create({
+      ...payment,
+      isActive: payment.status === 'completed',
+      validUntil: this.calculateValidUntil(payment.paymentDate)
+    });
+    return this.paymentsRepository.save(newPayment);
   }
 
-  findAll(): Promise<Payment[]> {
-    return this.paymentsRepository.find();
+  async findAll(): Promise<Payment[]> {
+    return this.paymentsRepository.find({
+      relations: ['member'],
+      order: { paymentDate: 'DESC' }
+    });
   }
 
   async findOne(id: number): Promise<Payment> {
     const payment = await this.paymentsRepository.findOne({
-      where: { id }
+      where: { id },
+      relations: ['member']
     });
     if (!payment) {
       throw new NotFoundException(`Payment #${id} not found`);
@@ -36,8 +44,10 @@ export class PaymentsService {
       where: {
         member: { id: memberId },
         status: 'completed',
-        paymentDate: MoreThan(now)
-      }
+        isActive: true,
+        validUntil: MoreThan(now)
+      },
+      relations: ['member']
     });
   }
 
@@ -51,7 +61,35 @@ export class PaymentsService {
     }
   }
 
-  remove(id: number): Promise<void> {
-    return this.paymentsRepository.delete(id).then(() => {});
+  async deactivateExpiredPayments(): Promise<void> {
+    const now = new Date();
+    await this.paymentsRepository.update(
+      {
+        isActive: true,
+        validUntil: LessThanOrEqual(now)
+      },
+      {
+        isActive: false
+      }
+    );
+  }
+
+  async remove(id: number): Promise<void> {
+    const payment = await this.findOne(id);
+    await this.paymentsRepository.remove(payment);
+  }
+
+  private calculateValidUntil(startDate: Date): Date {
+    const validUntil = new Date(startDate);
+    validUntil.setMonth(validUntil.getMonth() + 1); // Default to 1 month validity
+    return validUntil;
+  }
+
+  async findMemberPayments(memberId: number): Promise<Payment[]> {
+    return this.paymentsRepository.find({
+      where: { member: { id: memberId } },
+      relations: ['member'],
+      order: { paymentDate: 'DESC' }
+    });
   }
 }
