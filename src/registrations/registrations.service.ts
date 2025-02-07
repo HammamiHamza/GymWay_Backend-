@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Registration } from './registration.entity';
@@ -11,22 +11,30 @@ export class RegistrationsService {
     @InjectRepository(Registration)
     private registrationsRepository: Repository<Registration>,
     @InjectRepository(Session)
-    private readonly sessionRepository: Repository<Session>,
+    private sessionRepository: Repository<Session>,
     @InjectRepository(Member)
-    private readonly memberRepository: Repository<Member>,
+    private memberRepository: Repository<Member>,
   ) {}
 
-  async registerForSession(userId: number, sessionId: number): Promise<Registration> {
-    const session = await this.sessionRepository.findOne({ 
-      where: { id: sessionId }
+  async registerForSession(memberId: number, sessionId: number): Promise<Registration> {
+    // Find the session
+    const session = await this.sessionRepository.findOne({
+      where: { id: sessionId },
+      relations: ['registrations']
     });
-    
+
     if (!session) {
       throw new BadRequestException('Session not found');
     }
 
+    // Check session capacity
+    if (session.registrations.length >= session.capacity) {
+      throw new BadRequestException('Session is full');
+    }
+
+    // Find the member
     const member = await this.memberRepository.findOne({
-      where: { id: userId }
+      where: { id: memberId }
     });
 
     if (!member) {
@@ -36,7 +44,7 @@ export class RegistrationsService {
     // Check if member is already registered
     const existingRegistration = await this.registrationsRepository.findOne({
       where: {
-        member: { id: userId },
+        member: { id: memberId },
         session: { id: sessionId },
         status: 'confirmed'
       }
@@ -46,6 +54,7 @@ export class RegistrationsService {
       throw new BadRequestException('Already registered for this session');
     }
 
+    // Create new registration
     const registration = this.registrationsRepository.create({
       member,
       session,
@@ -56,23 +65,27 @@ export class RegistrationsService {
     return this.registrationsRepository.save(registration);
   }
 
-  async getRegistrationsForUser(userId: number): Promise<Registration[]> {
+  async getRegistrationsForMember(memberId: number): Promise<Registration[]> {
     return this.registrationsRepository.find({
-      where: { member: { id: userId } },
-      relations: ['session'],
+      where: { member: { id: memberId } },
+      relations: ['session', 'session.instructor'],
       order: { registrationDate: 'DESC' }
     });
   }
 
-  async remove(id: number): Promise<void> {
+  async cancelRegistration(registrationId: number, memberId: number): Promise<void> {
     const registration = await this.registrationsRepository.findOne({
-      where: { id }
+      where: { 
+        id: registrationId,
+        member: { id: memberId }
+      }
     });
-    
+
     if (!registration) {
       throw new BadRequestException('Registration not found');
     }
 
-    await this.registrationsRepository.update(id, { status: 'cancelled' });
+    registration.status = 'cancelled';
+    await this.registrationsRepository.save(registration);
   }
 }

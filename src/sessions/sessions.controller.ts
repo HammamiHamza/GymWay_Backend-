@@ -1,12 +1,16 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, UnauthorizedException, Request } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import { Session } from './session.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { PaymentsService } from '../payments/payments.service';
 
 @Controller('sessions')
 @UseGuards(JwtAuthGuard)
 export class SessionsController {
-  constructor(private readonly sessionsService: SessionsService) {}
+  constructor(
+    private readonly sessionsService: SessionsService,
+    private readonly paymentsService: PaymentsService
+  ) {}
 
   @Post()
   create(@Body() session: Session): Promise<Session> {
@@ -14,7 +18,15 @@ export class SessionsController {
   }
 
   @Get()
-  findAll(): Promise<Session[]> {
+  async findAll(@Request() req): Promise<Session[]> {
+    if (req.user.role === 'admin') {
+      return this.sessionsService.findAll();
+    }
+    
+    const hasAccess = await this.paymentsService.checkMemberAccess(req.user.id);
+    if (!hasAccess) {
+      throw new UnauthorizedException('Active payment required to view sessions');
+    }
     return this.sessionsService.findAll();
   }
 

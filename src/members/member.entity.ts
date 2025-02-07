@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
-import { Payment } from '../payments/payment.entity';
 import { Registration } from '../registrations/registration.entity';
 import { MembershipType } from '../membership-types/membership-type.entity';
+import { Payment } from '../payments/payment.entity';
 
 @Entity()
 export class Member {
@@ -14,7 +14,7 @@ export class Member {
   @Column()
   lastName: string;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   @Column()
@@ -26,14 +26,23 @@ export class Member {
   @ManyToOne(() => MembershipType, membershipType => membershipType.members)
   membershipType: MembershipType;
 
-  @OneToMany(() => Payment, payment => payment.member)
-  payments: Payment[];
-
   @OneToMany(() => Registration, registration => registration.member)
   registrations: Registration[];
 
   @Column()
   password: string;
+
+  @Column({ default: 'inactive' })
+  membershipStatus: 'active' | 'inactive';
+
+  @Column({ nullable: true })
+  membershipExpiry: Date;
+
+  @OneToMany(() => Payment, payment => payment.member)
+  payments: Payment[];
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  updatedAt: Date;
 
   @Column({ default: false })
   isActive: boolean;

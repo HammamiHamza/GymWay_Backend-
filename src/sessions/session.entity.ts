@@ -10,6 +10,12 @@ export class Session {
   @Column()
   sessionName: string;
 
+  @Column()
+  schedule: Date;
+
+  @Column()
+  capacity: number;
+
   @ManyToOne(() => User, user => user.sessions)
   instructor: User;
 
