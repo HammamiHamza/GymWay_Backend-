@@ -1,15 +1,13 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, UnauthorizedException, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Delete, UseGuards, UnauthorizedException, Request } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import { Session } from './session.entity';
 import { JwtAuthGuard } from '../auth/jwt.guard';
-import { PaymentsService } from '../payments/payments.service';
 
 @Controller('sessions')
 @UseGuards(JwtAuthGuard)
 export class SessionsController {
   constructor(
     private readonly sessionsService: SessionsService,
-    private readonly paymentsService: PaymentsService
   ) {}
 
   @Post()
@@ -23,10 +21,6 @@ export class SessionsController {
       return this.sessionsService.findAll();
     }
     
-    const hasAccess = await this.paymentsService.checkMemberAccess(req.user.id);
-    if (!hasAccess) {
-      throw new UnauthorizedException('Active payment required to view sessions');
-    }
     return this.sessionsService.findAll();
   }
 
@@ -38,5 +32,10 @@ export class SessionsController {
   @Delete(':id')
   remove(@Param('id') id: number): Promise<void> {
     return this.sessionsService.remove(id);
+  }
+
+  @Put(':id')
+  update(@Param('id') id: number, @Body() session: Partial<Session>): Promise<Session> {
+    return this.sessionsService.update(id, session);
   }
 }

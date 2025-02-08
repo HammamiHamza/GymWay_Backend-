@@ -25,6 +25,9 @@ export class SessionsService {
   async remove(id: number): Promise<void> {
     await this.sessionsRepository.delete(id);
   }
-  
-  
+
+  async update(id: number, session: Partial<Session>): Promise<Session> {
+    await this.sessionsRepository.update(id, session);
+    return this.findOne(id);
+  }
 }
