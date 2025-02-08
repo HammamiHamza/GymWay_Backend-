@@ -1,36 +1,70 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+// src/payments/payments.service.ts
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan, LessThanOrEqual } from 'typeorm';
 import { Payment } from './payment.entity';
-import { Member } from '../members/member.entity';
+import Stripe from 'stripe';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PaymentsService {
+  private stripe: Stripe;
+
   constructor(
     @InjectRepository(Payment)
-    private paymentsRepository: Repository<Payment>
-  ) {}
+    private paymentsRepository: Repository<Payment>,
+    private configService: ConfigService, // Injection du ConfigService
+  ) {
+    // Récupérer la clé Stripe depuis la configuration
+    const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    if (!stripeSecretKey) {
+      throw new Error('La clé secrète Stripe (STRIPE_SECRET_KEY) n\'est pas définie');
+    }
+    // Initialisation de Stripe avec la clé récupérée
+    this.stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2025-01-27.acacia',
+    });
+  }
 
+  // Méthode pour créer et enregistrer un paiement dans la base de données
   async create(payment: Partial<Payment>): Promise<Payment> {
     const newPayment = this.paymentsRepository.create({
       ...payment,
       isActive: payment.status === 'completed',
-      validUntil: this.calculateValidUntil(payment.paymentDate)
+      validUntil: this.calculateValidUntil(payment.paymentDate),
     });
     return this.paymentsRepository.save(newPayment);
+  }
+
+  // Méthode pour créer un PaymentIntent via Stripe
+  async createPaymentIntent(
+    amount: number,
+    currency: string = 'eur',
+    metadata?: any,
+  ): Promise<Stripe.PaymentIntent> {
+    try {
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount,
+        currency,
+        metadata,
+      });
+      return paymentIntent;
+    } catch (error: any) {
+      throw new BadRequestException(error.message);
+    }
   }
 
   async findAll(): Promise<Payment[]> {
     return this.paymentsRepository.find({
       relations: ['member'],
-      order: { paymentDate: 'DESC' }
+      order: { paymentDate: 'DESC' },
     });
   }
 
   async findOne(id: number): Promise<Payment> {
     const payment = await this.paymentsRepository.findOne({
       where: { id },
-      relations: ['member']
+      relations: ['member'],
     });
     if (!payment) {
       throw new NotFoundException(`Payment #${id} not found`);
@@ -45,9 +79,9 @@ export class PaymentsService {
         member: { id: memberId },
         status: 'completed',
         isActive: true,
-        validUntil: MoreThan(now)
+        validUntil: MoreThan(now),
       },
-      relations: ['member']
+      relations: ['member'],
     });
   }
 
@@ -66,11 +100,11 @@ export class PaymentsService {
     await this.paymentsRepository.update(
       {
         isActive: true,
-        validUntil: LessThanOrEqual(now)
+        validUntil: LessThanOrEqual(now),
       },
       {
-        isActive: false
-      }
+        isActive: false,
+      },
     );
   }
 
@@ -81,7 +115,7 @@ export class PaymentsService {
 
   private calculateValidUntil(startDate: Date): Date {
     const validUntil = new Date(startDate);
-    validUntil.setMonth(validUntil.getMonth() + 1); // Default to 1 month validity
+    validUntil.setMonth(validUntil.getMonth() + 1); // Validité par défaut d'1 mois
     return validUntil;
   }
 
@@ -89,7 +123,7 @@ export class PaymentsService {
     return this.paymentsRepository.find({
       where: { member: { id: memberId } },
       relations: ['member'],
-      order: { paymentDate: 'DESC' }
+      order: { paymentDate: 'DESC' },
     });
   }
 }

@@ -8,11 +8,12 @@ import { MembershipType } from '../membership-types/membership-type.entity';
 import { User } from 'src/users/user.entity';
 import { Session } from '../sessions/session.entity';
 import { SessionsModule } from '../sessions/sessions.module';
+import { PaymentsModule } from 'src/payments/payments.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Registration, Member, MembershipType, User, Session]),
-    SessionsModule,
+    SessionsModule, PaymentsModule
   ],
   controllers: [RegistrationsController],
   providers: [RegistrationsService],

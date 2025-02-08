@@ -25,4 +25,18 @@ export class PaymentsController {
   remove(@Param('id') id: number): Promise<void> {
     return this.paymentsService.remove(id);
   }
+
+  @Post()
+  async createPayment(@Body() body: { amount: number; currency?: string; registrationId?: number }) {
+    const { amount, currency, registrationId } = body;
+    const paymentIntent = await this.paymentsService.createPaymentIntent(
+      amount,
+      currency,
+      { registrationId },
+    );
+    // On renvoie le clientSecret afin que le frontend puisse l'utiliser
+    return { clientSecret: paymentIntent.client_secret };
+  }
+
+
 }
